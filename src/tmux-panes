@@ -1,0 +1,92 @@
+#!/usr/bin/env bash
+
+# ============================================================
+# tmux-panes
+# ------------------------------------------------------------
+# Cria automaticamente N panes em uma sessão tmux organizada.
+#
+# USO:
+#   tmux-panes <numero_de_panes> [nome_sessao]
+#
+# EXEMPLOS:
+#   tmux-panes 3
+#   tmux-panes 6 lab
+#
+# LÓGICA:
+#   tmux sempre inicia com 1 pane.
+#   Cada "split-window" adiciona +1 pane.
+#
+#   Portanto:
+#       panes = 1 + splits
+#
+#   Logo:
+#       splits = panes_desejados - 1
+#
+# FUNCIONAMENTO:
+#   1. cria sessão tmux destacada (-d)
+#   2. executa N-1 splits
+#   3. aplica layout tiled (grade automática)
+#   4. conecta à sessão
+# ============================================================
+
+# ----------------------------
+# valida argumento
+# ----------------------------
+if [ -z "$1" ]; then
+    echo "Uso: tmux-panes <num_panes> [sessao]"
+    exit 1
+fi
+
+PANES="$1"
+SESSION="${2:-lab}"
+
+if ! [[ "$PANES" =~ ^[0-9]+$ ]]; then
+    echo "Erro: numero de panes inválido"
+    exit 1
+fi
+
+if [ "$PANES" -lt 1 ]; then
+    echo "Erro: minimo = 1 pane"
+    exit 1
+fi
+
+# ----------------------------
+# calcula splits necessários
+# ----------------------------
+# panes = 1 + splits
+# splits = panes - 1
+SPLITS=$((PANES - 1))
+
+# ----------------------------
+# cria sessão inicial
+# ----------------------------
+tmux new-session -d -s "$SESSION"
+
+# ------------------------------------------------------------
+# loop de splits
+# ------------------------------------------------------------
+# cada split cria um novo pane
+# alternamos h/v para espalhar melhor
+# (layout final será reorganizado em grade)
+# ------------------------------------------------------------
+for ((i=1; i<=SPLITS; i++)); do
+
+    if (( i % 2 == 1 )); then
+        # split horizontal
+        tmux split-window -h -t "$SESSION"
+    else
+        # split vertical
+        tmux split-window -v -t "$SESSION"
+    fi
+
+done
+
+# ----------------------------
+# organiza em grade automática
+# ----------------------------
+tmux select-layout -t "$SESSION" tiled
+
+# ----------------------------
+# conecta
+# ----------------------------
+tmux attach -t "$SESSION"
